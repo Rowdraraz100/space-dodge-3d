@@ -1,0 +1,278 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #100b36;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#game-container {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+}
+
+#game-container canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#start-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background:
+        radial-gradient(ellipse at 50% 60%, #6939a6 0%, transparent 48%),
+        linear-gradient(180deg, #100b36, #26125d 65%, #071e55);
+}
+
+.stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(white 1px, transparent 1.5px),
+        radial-gradient(#9eeaff 1px, transparent 1.5px);
+    background-size: 45px 45px, 73px 73px;
+    background-position: 0 0, 20px 30px;
+    animation: stars-move 20s linear infinite;
+}
+
+.home-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+}
+
+.subtitle {
+    color: #ffe66d;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+h1 {
+    margin-top: 12px;
+    font-size: clamp(54px, 12vw, 88px);
+    font-weight: 900;
+    line-height: 0.9;
+    color: white;
+    -webkit-text-stroke: 1px #8a63ff;
+    text-shadow: 4px 5px 0 #512caa;
+}
+
+h1 span {
+    color: #ffe45e;
+    -webkit-text-stroke: 1px #ffad37;
+}
+
+.description {
+    margin-top: 18px;
+    color: #e3dcff;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* Decorative planets */
+
+.planet {
+    position: absolute;
+    border-radius: 50%;
+    z-index: 1;
+}
+
+.planet-purple {
+    width: 95px;
+    height: 95px;
+    top: 12%;
+    left: 9%;
+    background: radial-gradient(circle at 30% 25%, #ed8cff, #9b3df5 55%, #43138e);
+    box-shadow: inset -12px -10px 15px #32106b;
+}
+
+.planet-green {
+    width: 145px;
+    height: 145px;
+    top: 9%;
+    right: -25px;
+    background: radial-gradient(circle at 30% 25%, #e1ff9a, #57ec67 45%, #138a66);
+    box-shadow: inset -17px -12px 20px #075744;
+}
+
+.planet-orange {
+    width: 48px;
+    height: 48px;
+    bottom: 23%;
+    left: 12%;
+    background: radial-gradient(circle at 30% 25%, #fff3a3, #ff9e39 55%, #e44c42);
+    border: 4px solid #ffe16d;
+    box-shadow: 0 0 15px #ffb53f;
+}
+
+/* Cartoon spaceship */
+
+.spaceship-art {
+    position: relative;
+    width: 210px;
+    height: 150px;
+    margin: 12px auto 15px;
+    animation: ship-float 2.5s ease-in-out infinite;
+    filter: drop-shadow(0 10px 12px #150c45);
+}
+
+.ship-body {
+    position: absolute;
+    left: 73px;
+    top: 13px;
+    width: 64px;
+    height: 115px;
+    background: linear-gradient(90deg, #8da5d4, white 38%, #f5f5ff 72%, #7c91c5);
+    border: 3px solid #26356c;
+    border-radius: 48% 48% 40% 40%;
+    clip-path: polygon(50% 0, 100% 73%, 88% 95%, 50% 100%, 12% 95%, 0 73%);
+}
+
+.ship-window {
+    position: absolute;
+    top: 32px;
+    left: 86px;
+    width: 38px;
+    height: 48px;
+    border: 3px solid #b8f5ff;
+    border-radius: 50% 50% 45% 45%;
+    background: linear-gradient(135deg, #73f3ff, #1686ff 65%, #172e8b);
+    transform: rotate(-8deg);
+}
+
+.ship-wing {
+    position: absolute;
+    top: 66px;
+    width: 95px;
+    height: 49px;
+    background: linear-gradient(180deg, white, #a8c4ee);
+    border: 3px solid #26356c;
+}
+
+.wing-left {
+    left: 1px;
+    transform: rotate(-24deg);
+    clip-path: polygon(100% 0, 78% 100%, 0 90%, 25% 25%);
+}
+
+.wing-right {
+    right: 1px;
+    transform: rotate(24deg);
+    clip-path: polygon(0 0, 75% 25%, 100% 90%, 22% 100%);
+}
+
+.flame {
+    position: absolute;
+    top: 112px;
+    width: 18px;
+    height: 37px;
+    border-radius: 50% 50% 65% 65%;
+    background: linear-gradient(#fff8a2, #ff9b24, #ff4a25, transparent);
+    transform-origin: top;
+    animation: flame 0.25s infinite alternate;
+}
+
+.flame-left {
+    left: 82px;
+}
+
+.flame-right {
+    left: 115px;
+}
+
+/* Button */
+
+#start-button {
+    padding: 15px 35px;
+    border: 3px solid #fff1a3;
+    border-radius: 30px;
+    background: linear-gradient(180deg, #ffe96c, #ff9d2f);
+    color: #51246b;
+    font-size: 17px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 5px 0 #b85b28, 0 0 25px #ffca46;
+    transition: transform 0.2s;
+}
+
+#start-button:hover {
+    transform: translateY(-4px) scale(1.04);
+}
+
+.controls {
+    margin-top: 20px;
+    color: #d4c9ff;
+    font-size: 12px;
+}
+
+.bottom-text {
+    position: absolute;
+    bottom: 18px;
+    left: 0;
+    width: 100%;
+    color: #b9a9ff;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+@keyframes ship-float {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-12px) rotate(3deg); }
+}
+
+@keyframes flame {
+    from { transform: scaleY(0.8); }
+    to { transform: scaleY(1.2); }
+}
+
+@keyframes stars-move {
+    to { background-position: 45px 45px, 93px 103px; }
+}
+
+@media (max-width: 500px) {
+    .planet-purple {
+        width: 65px;
+        height: 65px;
+        left: 4%;
+    }
+
+    .planet-green {
+        width: 95px;
+        height: 95px;
+    }
+
+    .planet-orange {
+        left: 5%;
+        bottom: 18%;
+    }
+
+    .spaceship-art {
+        transform: scale(0.9);
+        margin: 5px auto 10px;
+    }
+
+    .home-content {
+        padding: 12px;
+    }
+
+    .description {
+        font-size: 12px;
+    }
+}
