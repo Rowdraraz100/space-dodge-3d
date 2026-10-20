@@ -46,6 +46,339 @@ let highScore = 0;
 const clock = new THREE.Clock();
 const keys = {};
 
+// ==================== BUILT-IN GAME AUDIO ====================
+// Web Audio API creates sounds. No MP3 files are required.
+let audioContext = null;
+let audioMaster = null;
+let musicGain = null;
+let engineGain = null;
+let engineOscillator = null;
+let audioMuted = false;
+let musicTimer = null;
+let musicStep = 0;
+
+function initializeAudio() {
+    if (audioContext) {
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().catch(() => {});
+        }
+        return;
+    }
+
+    const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) return;
+
+    audioContext = new AudioContextClass();
+
+    audioMaster = audioContext.createGain();
+    audioMaster.gain.value = audioMuted ? 0 : 0.7;
+    audioMaster.connect(audioContext.destination);
+
+    // Background space ambience
+    musicGain = audioContext.createGain();
+    musicGain.gain.value = 0;
+    musicGain.connect(audioMaster);
+
+    const drone1 = audioContext.createOscillator();
+    const drone2 = audioContext.createOscillator();
+    const droneFilter = audioContext.createBiquadFilter();
+
+    drone1.type = 'sine';
+    drone2.type = 'triangle';
+
+    drone1.frequency.value = 55;
+    drone2.frequency.value = 82.4;
+    drone2.detune.value = -7;
+
+    droneFilter.type = 'lowpass';
+    droneFilter.frequency.value = 360;
+
+    drone1.connect(droneFilter);
+    drone2.connect(droneFilter);
+    droneFilter.connect(musicGain);
+
+    drone1.start();
+    drone2.start();
+
+    // Spaceship engine hum
+    engineGain = audioContext.createGain();
+    engineGain.gain.value = 0;
+    engineGain.connect(audioMaster);
+
+    engineOscillator = audioContext.createOscillator();
+    engineOscillator.type = 'sawtooth';
+    engineOscillator.frequency.value = 48;
+
+    const engineFilter = audioContext.createBiquadFilter();
+    engineFilter.type = 'lowpass';
+    engineFilter.frequency.value = 150;
+
+    engineOscillator.connect(engineFilter);
+    engineFilter.connect(engineGain);
+    engineOscillator.start();
+}
+
+function playTone({
+    frequency = 440,
+    endFrequency = frequency,
+    duration = 0.16,
+    type = 'sine',
+    volume = 0.25
+} = {}) {
+    if (!audioContext || audioMuted || !audioMaster) return;
+
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = type;
+
+    oscillator.frequency.setValueAtTime(
+        Math.max(1, frequency),
+        now
+    );
+
+    oscillator.frequency.exponentialRampToValueAtTime(
+        Math.max(1, endFrequency),
+        now + duration
+    );
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(
+        volume,
+        now + 0.015
+    );
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioMaster);
+
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.03);
+}
+
+// Crystal collection sound
+function playCollectSound() {
+    playTone({
+        frequency: 660,
+        endFrequency: 990,
+        duration: 0.12,
+        type: 'sine',
+        volume: 0.22
+    });
+
+    if (audioContext && !audioMuted) {
+        setTimeout(() => {
+            playTone({
+                frequency: 990,
+                endFrequency: 1320,
+                duration: 0.12,
+                type: 'sine',
+                volume: 0.16
+            });
+        }, 70);
+    }
+}
+
+// Collision sound
+function playCollisionSound() {
+    playTone({
+        frequency: 150,
+        endFrequency: 48,
+        duration: 0.32,
+        type: 'sawtooth',
+        volume: 0.32
+    });
+}
+
+// Game over sound
+function playGameOverSound() {
+    playTone({
+        frequency: 330,
+        endFrequency: 220,
+        duration: 0.24,
+        type: 'triangle',
+        volume: 0.22
+    });
+
+    if (audioContext && !audioMuted) {
+        setTimeout(() => {
+            playTone({
+                frequency: 220,
+                endFrequency: 110,
+                duration: 0.42,
+                type: 'triangle',
+                volume: 0.2
+            });
+        }, 210);
+    }
+}
+
+function startGameAudio() {
+    initializeAudio();
+    if (!audioContext) return;
+
+    audioContext.resume().catch(() => {});
+
+    const now = audioContext.currentTime;
+
+    if (musicGain) {
+        musicGain.gain.setTargetAtTime(0.12, now, 0.7);
+    }
+
+    if (engineGain) {
+        engineGain.gain.setTargetAtTime(0.035, now, 0.25);
+    }
+
+    if (engineOscillator) {
+        engineOscillator.frequency.setTargetAtTime(
+            keys['shift'] ? 65 : 48,
+            now,
+            0.15
+        );
+    }
+
+    startMusicSequence();
+}
+
+function startMusicSequence() {
+    if (musicTimer || !audioContext) return;
+
+    // Synthesized futuristic music sequence
+    const notes = [
+        110, 164.81, 220, 164.81,
+        130.81, 196, 261.63, 196
+    ];
+
+    musicTimer = setInterval(() => {
+        if (
+            !audioContext ||
+            audioMuted ||
+            isPaused ||
+            !gameRunning ||
+            gameOver
+        ) {
+            return;
+        }
+
+        const note = notes[musicStep % notes.length];
+
+        playTone({
+            frequency: note,
+            endFrequency: note * 1.01,
+            duration: 0.34,
+            type: 'sine',
+            volume: 0.035
+        });
+
+        musicStep++;
+    }, 420);
+}
+
+function pauseGameAudio() {
+    if (!audioContext) return;
+
+    const now = audioContext.currentTime;
+
+    if (musicGain) {
+        musicGain.gain.setTargetAtTime(0, now, 0.15);
+    }
+
+    if (engineGain) {
+        engineGain.gain.setTargetAtTime(0, now, 0.1);
+    }
+}
+
+function resumeGameAudio() {
+    if (!audioContext || audioMuted) return;
+
+    audioContext.resume().catch(() => {});
+
+    const now = audioContext.currentTime;
+
+    if (musicGain) {
+        musicGain.gain.setTargetAtTime(0.12, now, 0.4);
+    }
+
+    if (engineGain) {
+        engineGain.gain.setTargetAtTime(0.035, now, 0.2);
+    }
+
+    startMusicSequence();
+}
+
+function stopGameAudio() {
+    if (!audioContext) return;
+
+    const now = audioContext.currentTime;
+
+    if (musicGain) {
+        musicGain.gain.setTargetAtTime(0, now, 0.15);
+    }
+
+    if (engineGain) {
+        engineGain.gain.setTargetAtTime(0, now, 0.1);
+    }
+}
+
+// Sound toggle button
+const soundButton = document.createElement('button');
+
+soundButton.id = 'sound-toggle';
+soundButton.textContent = '🔊 Sound On';
+soundButton.setAttribute('aria-label', 'Toggle sound');
+
+soundButton.style.cssText = `
+    position:fixed;
+    top:114px;
+    right:20px;
+    z-index:26;
+    display:block;
+    padding:10px 16px;
+    color:white;
+    background:#15254add;
+    border:1px solid #58aaff;
+    border-radius:9px;
+    font-size:14px;
+    cursor:pointer;
+`;
+
+document.body.appendChild(soundButton);
+
+soundButton.addEventListener('click', () => {
+    audioMuted = !audioMuted;
+
+    soundButton.textContent = audioMuted
+        ? '🔇 Sound Off'
+        : '🔊 Sound On';
+
+    if (!audioContext && !audioMuted) {
+        initializeAudio();
+    }
+
+    if (audioContext && audioMaster) {
+        audioMaster.gain.setTargetAtTime(
+            audioMuted ? 0 : 0.7,
+            audioContext.currentTime,
+            0.05
+        );
+
+        if (!audioMuted && gameRunning && !isPaused) {
+            resumeGameAudio();
+        }
+
+        if (audioMuted) {
+            pauseGameAudio();
+        }
+    }
+});
+
+// ==================== HIGH SCORE ====================
 try {
     highScore = Number(
         localStorage.getItem('spaceDodgeHighScore')
@@ -474,7 +807,7 @@ pauseButton.style.cssText = `
 
 document.body.appendChild(pauseButton);
 
-// ==================== EXIT GAME BUTTON ====================
+// ==================== EXIT BUTTON ====================
 const exitButton = document.createElement('button');
 
 exitButton.textContent = '✕ Exit Game';
@@ -496,6 +829,68 @@ exitButton.style.cssText = `
 
 document.body.appendChild(exitButton);
 
+// ==================== MOBILE CONTROLS ====================
+const mobileControls = document.createElement('div');
+mobileControls.id = 'mobile-controls';
+
+mobileControls.innerHTML = `
+    <div class="move-controls">
+        <button id="move-left" class="touch-btn"
+            aria-label="Move left">◀</button>
+
+        <button id="move-right" class="touch-btn"
+            aria-label="Move right">▶</button>
+    </div>
+
+    <button id="boost-btn" class="touch-btn"
+        aria-label="Boost">🚀 BOOST</button>
+`;
+
+document.body.appendChild(mobileControls);
+
+const moveLeftButton = document.getElementById('move-left');
+const moveRightButton = document.getElementById('move-right');
+const boostButton = document.getElementById('boost-btn');
+
+function updateMobileControls() {
+    mobileControls.style.display =
+        gameRunning && !isPaused && !gameOver ? 'flex' : 'none';
+}
+
+function bindHoldControl(button, keyName) {
+    const press = (event) => {
+        event.preventDefault();
+        keys[keyName] = true;
+        button.classList.add('pressed');
+
+        try {
+            button.setPointerCapture(event.pointerId);
+        } catch (error) {
+            // Pointer capture is optional.
+        }
+    };
+
+    const release = (event) => {
+        if (event) event.preventDefault();
+
+        keys[keyName] = false;
+        button.classList.remove('pressed');
+    };
+
+    button.addEventListener('pointerdown', press);
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', release);
+
+    button.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
+}
+
+bindHoldControl(moveLeftButton, 'arrowleft');
+bindHoldControl(moveRightButton, 'arrowright');
+bindHoldControl(boostButton, 'shift');
+
 // ==================== UPDATE HUD ====================
 function updateUI() {
     document.getElementById('score').textContent = score;
@@ -514,6 +909,8 @@ function startGame() {
     gameRunning = true;
     isPaused = false;
     gameOver = false;
+
+    startGameAudio();
 
     const startScreen = document.getElementById('start-screen');
 
@@ -539,7 +936,9 @@ function startGame() {
     pauseButton.style.display = 'block';
     pauseButton.textContent = 'Ⅱ Pause';
     exitButton.style.display = 'block';
+    soundButton.style.display = 'block';
 
+    updateMobileControls();
     clock.getDelta();
 }
 
@@ -550,7 +949,14 @@ function pauseGame() {
     isPaused = !isPaused;
 
     if (isPaused) {
+        pauseGameAudio();
         pauseButton.textContent = '▶ Resume';
+
+        for (const key in keys) {
+            keys[key] = false;
+        }
+
+        updateMobileControls();
 
         showOverlay(
             'GAME PAUSED',
@@ -558,17 +964,22 @@ function pauseGame() {
             'Resume Game'
         );
     } else {
+        resumeGameAudio();
         pauseButton.textContent = 'Ⅱ Pause';
         hideOverlay();
+
+        updateMobileControls();
         clock.getDelta();
     }
 }
 
 pauseButton.addEventListener('click', pauseGame);
 
-// ==================== EXIT TO MAIN PAGE ====================
+// ==================== EXIT GAME ====================
 function exitGame() {
     gameRunning = false;
+    stopGameAudio();
+
     isPaused = false;
     gameOver = false;
 
@@ -576,18 +987,21 @@ function exitGame() {
         keys[key] = false;
     }
 
+    document.querySelectorAll('.touch-btn').forEach(button => {
+        button.classList.remove('pressed');
+    });
+
     pauseButton.style.display = 'none';
     exitButton.style.display = 'none';
 
+    updateMobileControls();
     hideOverlay();
 
     const startScreen = document.getElementById('start-screen');
 
     if (startScreen) {
-        // Return to the original HTML home page.
         startScreen.style.display = 'flex';
     } else {
-        // If there is no separate home page, show the game menu.
         showOverlay(
             'SPACE DODGE 3D',
             'Collect crystals 💎 and hearts ❤️. Avoid obstacles!',
@@ -600,12 +1014,16 @@ function exitGame() {
 
 exitButton.addEventListener('click', exitGame);
 
-// ==================== START / RESUME BUTTON ====================
+// ==================== OVERLAY BUTTON ====================
 overlayButton.addEventListener('click', () => {
     if (isPaused && !gameOver) {
         isPaused = false;
+        resumeGameAudio();
+
         pauseButton.textContent = 'Ⅱ Pause';
         hideOverlay();
+
+        updateMobileControls();
         clock.getDelta();
     } else {
         startGame();
@@ -634,6 +1052,10 @@ window.addEventListener('blur', () => {
     for (const key in keys) {
         keys[key] = false;
     }
+
+    document.querySelectorAll('.touch-btn').forEach(button => {
+        button.classList.remove('pressed');
+    });
 });
 
 // ==================== COLLISION ====================
@@ -649,11 +1071,16 @@ function hitObstacle(obstacle) {
     if (invulnerableTimer > 0) return;
 
     if (obstacle.userData.type === 'crystal') {
+        playCollectSound();
+
         score += 10;
         respawnObstacle(obstacle);
         updateUI();
+
         return;
     }
+
+    playCollisionSound();
 
     lives--;
     invulnerableTimer = 1.4;
@@ -670,12 +1097,17 @@ function hitObstacle(obstacle) {
 
 // ==================== GAME OVER ====================
 function endGame() {
+    playGameOverSound();
+    stopGameAudio();
+
     gameRunning = false;
     gameOver = true;
     isPaused = false;
 
     pauseButton.style.display = 'none';
     exitButton.style.display = 'none';
+
+    updateMobileControls();
 
     if (score > highScore) {
         highScore = score;
@@ -712,8 +1144,16 @@ function animate() {
             invulnerableTimer -= delta;
         }
 
-        // Rocket controls
-        const speed = 8 * delta;
+        // Rocket movement and boost
+        const speed = (keys['shift'] ? 12 : 8) * delta;
+
+        if (engineOscillator && audioContext && !audioMuted) {
+            engineOscillator.frequency.setTargetAtTime(
+                keys['shift'] ? 68 : 48,
+                audioContext.currentTime,
+                0.12
+            );
+        }
 
         if (keys['arrowleft'] || keys['a']) {
             spaceship.position.x -= speed;
@@ -757,7 +1197,7 @@ function animate() {
             }
         });
 
-        // Space background
+        // Space background movement
         stars.position.z += 8 * delta;
 
         if (stars.position.z > 30) {
@@ -771,7 +1211,6 @@ function animate() {
         // Obstacles and collision
         for (const obstacle of obstacles) {
             obstacle.position.z += obstacleSpeed * delta;
-
             obstacle.rotation.x += delta * 0.4;
             obstacle.rotation.y += delta * 0.6;
 
@@ -796,7 +1235,7 @@ function animate() {
             if (gameOver) break;
         }
 
-        // Heart pickups: restore one life, maximum 3
+        // Hearts restore lives (maximum 3)
         for (const heart of healthPickups) {
             heart.position.z += obstacleSpeed * delta;
             heart.rotation.y += delta * 2;
@@ -873,6 +1312,10 @@ window.addEventListener('resize', () => {
         window.innerWidth,
         window.innerHeight
     );
+
+    renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 2)
+    );
 });
 
 // ==================== INITIAL HOME SCREEN ====================
@@ -880,7 +1323,6 @@ const existingStartScreen = document.getElementById('start-screen');
 const existingStartButton = document.getElementById('start-button');
 
 if (existingStartScreen && existingStartButton) {
-    // Use the original home page and its Start Game button.
     overlay.style.display = 'none';
 
     existingStartButton.addEventListener('click', (event) => {
@@ -895,4 +1337,5 @@ if (existingStartScreen && existingStartButton) {
     );
 }
 
+updateMobileControls();
 animate();

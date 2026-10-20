@@ -86,7 +86,7 @@ h1 span {
     line-height: 1.7;
 }
 
-/* Decorative planets */
+/* Planets */
 
 .planet {
     position: absolute;
@@ -189,15 +189,10 @@ h1 span {
     animation: flame 0.25s infinite alternate;
 }
 
-.flame-left {
-    left: 82px;
-}
+.flame-left { left: 82px; }
+.flame-right { left: 115px; }
 
-.flame-right {
-    left: 115px;
-}
-
-/* Button */
+/* Start button */
 
 #start-button {
     padding: 15px 35px;
@@ -220,6 +215,7 @@ h1 span {
     margin-top: 20px;
     color: #d4c9ff;
     font-size: 12px;
+    line-height: 1.6;
 }
 
 .bottom-text {
@@ -231,6 +227,8 @@ h1 span {
     font-size: 10px;
     letter-spacing: 2px;
 }
+
+/* Animations */
 
 @keyframes ship-float {
     0%, 100% { transform: translateY(0) rotate(-3deg); }
@@ -245,6 +243,8 @@ h1 span {
 @keyframes stars-move {
     to { background-position: 45px 45px, 93px 103px; }
 }
+
+/* Responsive home screen */
 
 @media (max-width: 500px) {
     .planet-purple {
@@ -268,11 +268,135 @@ h1 span {
         margin: 5px auto 10px;
     }
 
-    .home-content {
-        padding: 12px;
+    .home-content { padding: 12px; }
+    .description { font-size: 12px; }
+}
+
+/* Mobile controls */
+
+#mobile-controls {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    z-index: 25;
+    padding: 0 16px;
+    align-items: flex-end;
+    justify-content: space-between;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.move-controls {
+    display: flex;
+    gap: 12px;
+    pointer-events: auto;
+}
+
+.touch-btn {
+    width: 62px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #55c9ff;
+    border-radius: 18px;
+    background: rgba(12, 35, 75, 0.86);
+    color: #fff;
+    font-size: 25px;
+    font-weight: 800;
+    box-shadow: 0 0 16px rgba(40, 180, 255, 0.28);
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.touch-btn:active,
+.touch-btn.pressed {
+    background: rgba(8, 123, 255, 0.95);
+    transform: scale(0.94);
+}
+
+#boost-btn {
+    width: 88px;
+    height: 62px;
+    border-color: #ffbd55;
+    background: rgba(100, 52, 12, 0.9);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+#boost-btn:active,
+#boost-btn.pressed {
+    background: rgba(255, 142, 25, 0.96);
+}
+
+@media (max-width: 768px) {
+    #mobile-controls {
+        padding-left: 12px;
+        padding-right: 12px;
     }
 
-    .description {
+    .touch-btn {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+    }
+
+    #boost-btn {
+        width: 78px;
+        font-size: 11px;
+    }
+
+    #start-screen .controls {
+        max-width: 280px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* Landscape mobile */
+
+@media (max-height: 500px) and (orientation: landscape) {
+    #mobile-controls {
+        bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .touch-btn {
+        width: 48px;
+        height: 48px;
+    }
+
+    #boost-btn {
+        width: 72px;
+        height: 48px;
+    }
+}
+
+/* Sound button */
+#sound-toggle {
+    position: fixed;
+    top: 116px;
+    right: 20px;
+    z-index: 26;
+    display: none;
+    padding: 10px 14px;
+    color: white;
+    background: #17264ddd;
+    border: 1px solid #55c9ff;
+    border-radius: 9px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+@media (max-width: 500px) {
+    #sound-toggle {
+        top: 108px;
+        right: 12px;
+        padding: 8px 10px;
         font-size: 12px;
     }
 }
